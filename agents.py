@@ -7,12 +7,12 @@ search_tool = SerperDevTool()
 
 research_agent = Agent(
     role="Research Specialist",
-    goal="Tìm kiếm thông tin đa nguồn bằng TIẾNG VIỆT, có trích dẫn",
+    goal="Tìm kiếm thông tin đa nguồn bằng TIẾNG VIỆT, BẮT BUỘC phải có LINK NGUỒN (URL)",
     backstory=(
         "Bạn là chuyên gia nghiên cứu người Việt. "
-        "MỌI câu trả lời BẮT BUỘC dùng TIẾNG VIỆT, "
-        "không dùng tiếng Anh trừ khi là thuật ngữ bắt buộc."
-        "Trích dẫn nguồn đến thông tin."
+        "MỌI câu trả lời BẮT BUỘC dùng TIẾNG VIỆT. "
+        "Quan trọng nhất: Luôn luôn đính kèm đường dẫn (URL) cho mọi thông tin bạn tìm được."
+        "Không bịa đặt nguồn."
     ),
     llm=gemini_llm,
     tools=[search_tool],

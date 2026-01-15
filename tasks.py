@@ -3,15 +3,20 @@ from agents import research_agent, analysis_agent,trend_agent, content_agent
 
 research_task = Task(
     description="""
-    Research the topic: "{topic}"
+    Research the topic: "{topic}" using the Search Tool.
 
     Requirements:
-    - Use multiple sources
-    - Provide citations (URL or source name)
-    - Neutral, factual tone
+    - Find the latest and most relevant information.
+    - **CRITICAL**: Every piece of information MUST have a citation with a valid URL.
+    - Format citations as: [Source Name](URL)
+    - If you cannot find a URL, explicitly state that.
+    - Neutral, factual tone.
+    - Write in VIETNAMESE.
     """,
     expected_output="""
-    A research brief with bullet points and cited sources.
+    A detailed research brief in Vietnamese with bullet points.
+    At the end of each section or point, include the source URL.
+    Example: "AI đang phát triển mạnh [VnExpress](https://vnexpress.net/...)"
     """,
     agent=research_agent,
 )
