@@ -1,5 +1,9 @@
 from crewai import Agent
 from llms import gemini_llm, claude_llm, chatgpt_llm, grok_llm
+from crewai_tools import SerperDevTool
+
+# 🛠️ Tools
+search_tool = SerperDevTool()
 
 research_agent = Agent(
     role="Research Specialist",
@@ -11,6 +15,7 @@ research_agent = Agent(
         "Trích dẫn nguồn đến thông tin."
     ),
     llm=gemini_llm,
+    tools=[search_tool],
     verbose=True,
 )
 
