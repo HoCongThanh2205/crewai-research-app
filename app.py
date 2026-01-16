@@ -1,6 +1,9 @@
 import streamlit as st
 import time
 import base64
+import json
+import os
+from datetime import datetime
 from main import run_crew_process
 
 # Cấu hình trang
@@ -10,6 +13,36 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- HISTORY FUNCTIONS ---
+HISTORY_FILE = "history.json"
+
+def load_history():
+    if not os.path.exists(HISTORY_FILE):
+        return []
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_to_history(topic, result):
+    history = load_history()
+    # Tạo object mới
+    new_entry = {
+        "topic": topic,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "result": result
+    }
+    # Thêm vào đầu danh sách
+    history.insert(0, new_entry)
+    # Giữ lại 20 mục gần nhất
+    history = history[:20]
+    
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=4)
+
+# --- END HISTORY FUNCTIONS ---
 
 # Hàm load ảnh background
 def get_base64_of_bin_file(bin_file):
@@ -143,6 +176,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Initialize Session State for History Selection
+if 'selected_history_item' not in st.session_state:
+    st.session_state.selected_history_item = None
+
 # Logo ở Sidebar (thay vì header để đỡ rối với ảnh nền)
 with st.sidebar:
     try:
@@ -153,14 +190,22 @@ with st.sidebar:
     st.markdown("---")
     st.header("⚙️ Bảng Điều Khiển")
     st.info("Nhập chủ đề y tế hoặc bệnh học để AI tiến hành phân tích chuyên sâu.")
-    
+
+    # --- HISTORY SECTION ---
     st.markdown("---")
-    st.markdown("### 📊 Trạng thái hệ thống")
-    st.success("🟢 AI Agents: Sẵn sàng")
-    st.success("🟢 Database: Đã kết nối")
+    st.header("🕒 Lịch sử nghiên cứu")
+    history_data = load_history()
     
-    st.markdown("---")
-    st.caption("© 2024 Medical AI Corp")
+    if not history_data:
+        st.caption("Chưa có lịch sử nào.")
+    else:
+        for idx, item in enumerate(history_data):
+            # Tạo label gồm tên topic và ngày
+            label = f"{item['topic']}\n({item['timestamp']})"
+            if st.button(label, key=f"hist_{idx}", use_container_width=True):
+                st.session_state.selected_history_item = item
+                st.rerun() # Reload lại trang để hiển thị kết quả
+    # --- END HISTORY SECTION ---
 
 # Main Input Area
 st.markdown("### 🔍 Nhập chủ đề nghiên cứu")
@@ -170,90 +215,108 @@ col_btn, col_space = st.columns([1, 4])
 with col_btn:
     start_btn = st.button("🚀 Bắt đầu phân tích", type="primary", use_container_width=True)
 
-if start_btn:
-    if not topic:
-        st.warning("⚠️ Vui lòng nhập chủ đề để bắt đầu!")
-    else:
-        # Progress Area
-        status_container = st.container()
-        with status_container:
-            st.markdown("### ⏳ Đang xử lý...")
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            steps = [
-                "Đang tìm kiếm tài liệu y khoa uy tín...",
-                "Đang phân tích dữ liệu lâm sàng...",
-                "Đang tổng hợp xu hướng điều trị mới...",
-                "Đang soạn thảo báo cáo chuyên môn...",
-                "Đang tạo Timeline sự kiện..."
-            ]
-            
-            # Giả lập hiệu ứng loading ban đầu
-            for i, step in enumerate(steps):
-                status_text.text(f"🔄 {step}")
-                progress_bar.progress((i + 1) * 5)
-                time.sleep(0.3)
+# Logic hiển thị kết quả
+results = None
 
-        try:
-            # Chạy CrewAI
-            with st.spinner('🤖 Đội ngũ AI đang làm việc hết công suất...'):
-                results = run_crew_process(topic)
-            
-            progress_bar.progress(100)
-            status_text.success("✅ Phân tích hoàn tất!")
-            time.sleep(1)
-            status_container.empty() # Ẩn thanh loading sau khi xong
+# Case 1: Người dùng bấm chạy mới
+if start_btn and topic:
+    st.session_state.selected_history_item = None # Clear history selection
+    
+    # Progress Area
+    status_container = st.container()
+    with status_container:
+        st.markdown("### ⏳ Đang xử lý...")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        steps = [
+            "Đang tìm kiếm tài liệu y khoa uy tín...",
+            "Đang phân tích dữ liệu lâm sàng...",
+            "Đang tổng hợp xu hướng điều trị mới...",
+            "Đang soạn thảo báo cáo chuyên môn...",
+            "Đang tạo Timeline sự kiện..."
+        ]
+        
+        # Giả lập hiệu ứng loading ban đầu
+        for i, step in enumerate(steps):
+            status_text.text(f"🔄 {step}")
+            progress_bar.progress((i + 1) * 5)
+            time.sleep(0.3)
 
-            # Hiển thị kết quả dạng Card/Tabs
-            st.markdown("## 📑 Kết quả Phân tích")
-            
-            tab1, tab2, tab3, tab4, tab5 = st.tabs([
-                "🔍 Nghiên cứu", 
-                "🧠 Phân tích", 
-                "📈 Xu hướng", 
-                "✍️ Báo cáo",
-                "⏱️ Timeline"
-            ])
-            
-            with tab1:
-                st.markdown("### 🏥 Tổng hợp Nghiên cứu")
-                st.markdown(results["research"])
-            
-            with tab2:
-                st.markdown("### 🔬 Phân tích Chuyên sâu")
-                st.markdown(results["analysis"])
-                
-            with tab3:
-                st.markdown("### 📊 Xu hướng & Dư luận")
-                st.markdown(results["trend"])
-                
-            with tab4:
-                st.markdown("### 📝 Nội dung Truyền thông")
-                st.markdown(results["content"])
-                
-            with tab5:
-                timeline_url = results.get("timeline_url")
-                if timeline_url:
-                    st.success("🎉 Đã tạo Timeline thành công!")
-                    st.markdown(f"""
-                    <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #2196F3;">
-                        <h3>⏱️ Timeline Sự Kiện</h3>
-                        <p>Bấm vào nút bên dưới để xem chi tiết timeline tương tác.</p>
-                        <a href="{timeline_url}" target="_blank" style="text-decoration: none;">
-                            <button style="background-color: #1976D2; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
-                                👉 Xem Timeline Ngay
-                            </button>
-                        </a>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.info("Không có dữ liệu Timeline hoặc đang xử lý.")
-                    if results.get("timeline"):
-                        st.json(results.get("timeline"))
+    try:
+        # Chạy CrewAI
+        with st.spinner('🤖 Đội ngũ AI đang làm việc hết công suất...'):
+            results = run_crew_process(topic)
+        
+        # Lưu vào lịch sử
+        save_to_history(topic, results)
+        
+        progress_bar.progress(100)
+        status_text.success("✅ Phân tích hoàn tất!")
+        time.sleep(1)
+        status_container.empty() # Ẩn thanh loading sau khi xong
 
-            # Footer status
-            st.toast(f"Dữ liệu đã được lưu vào Google Sheets! (Status: {results.get('sheets_status')})", icon="✅")
+    except Exception as e:
+        st.error(f"❌ Đã xảy ra lỗi hệ thống: {e}")
 
-        except Exception as e:
-            st.error(f"❌ Đã xảy ra lỗi hệ thống: {e}")
+# Case 2: Người dùng chọn từ lịch sử
+elif st.session_state.selected_history_item:
+    results = st.session_state.selected_history_item['result']
+    st.info(f"📂 Đang xem lại kết quả: **{st.session_state.selected_history_item['topic']}** (Ngày tạo: {st.session_state.selected_history_item['timestamp']})")
+
+elif start_btn and not topic:
+    st.warning("⚠️ Vui lòng nhập chủ đề để bắt đầu!")
+
+
+# Hiển thị kết quả (chung cho cả 2 case)
+if results:
+    # Hiển thị kết quả dạng Card/Tabs
+    st.markdown("## 📑 Kết quả Phân tích")
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🔍 Nghiên cứu", 
+        "🧠 Phân tích", 
+        "📈 Xu hướng", 
+        "✍️ Báo cáo",
+        "⏱️ Timeline"
+    ])
+    
+    with tab1:
+        st.markdown("### 🏥 Tổng hợp Nghiên cứu")
+        st.markdown(results["research"])
+    
+    with tab2:
+        st.markdown("### 🔬 Phân tích Chuyên sâu")
+        st.markdown(results["analysis"])
+        
+    with tab3:
+        st.markdown("### 📊 Xu hướng & Dư luận")
+        st.markdown(results["trend"])
+        
+    with tab4:
+        st.markdown("### 📝 Nội dung Truyền thông")
+        st.markdown(results["content"])
+        
+    with tab5:
+        timeline_url = results.get("timeline_url")
+        if timeline_url:
+            st.success("🎉 Đã tạo Timeline thành công!")
+            st.markdown(f"""
+            <div style="background-color: #E3F2FD; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #2196F3;">
+                <h3>⏱️ Timeline Sự Kiện</h3>
+                <p>Bấm vào nút bên dưới để xem chi tiết timeline tương tác.</p>
+                <a href="{timeline_url}" target="_blank" style="text-decoration: none;">
+                    <button style="background-color: #1976D2; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
+                        👉 Xem Timeline Ngay
+                    </button>
+                </a>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("Không có dữ liệu Timeline hoặc đang xử lý.")
+            if results.get("timeline"):
+                st.json(results.get("timeline"))
+
+    # Footer status
+    if "sheets_status" in results:
+        st.toast(f"Dữ liệu đã được lưu vào Google Sheets! (Status: {results.get('sheets_status')})", icon="✅")
