@@ -1,3 +1,16 @@
+import signal
+import threading
+
+# Vá lỗi "signal only works in main thread" trên Streamlit
+if threading.current_thread() is not threading.main_thread():
+    _original_signal = signal.signal
+    def _safe_signal(signum, handler):
+        try:
+            return _original_signal(signum, handler)
+        except ValueError:
+            pass # Bỏ qua lỗi nếu không phải luồng chính
+    signal.signal = _safe_signal
+
 import streamlit as st
 import time
 import base64
