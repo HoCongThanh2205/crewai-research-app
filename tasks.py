@@ -74,7 +74,13 @@ content_task = Task(
     5. 3 short social media posts
     """,
     expected_output="""
-    The content is written in Vietnamese, well-formatted, and ready for publication.
+    FULL CONTENT in Vietnamese, including:
+    1. Executive Summary
+    2. Detailed Report
+    3. Blog Article
+    4. Social Media Posts
+    
+    OUTPUT THE ACTUAL CONTENT, DO NOT SUMMARIZE OR SAY "DONE".
     """,
     agent=content_agent,
     context=[research_task, analysis_task, trend_task],

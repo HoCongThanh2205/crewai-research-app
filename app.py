@@ -196,7 +196,7 @@ if 'selected_history_item' not in st.session_state:
 # Logo ở Sidebar (thay vì header để đỡ rối với ảnh nền)
 with st.sidebar:
     try:
-        st.image("assets/logo.png", use_container_width=True)
+        st.image("assets/logo.png", width="stretch")
     except:
         st.warning("Chưa có logo")
     
@@ -215,21 +215,21 @@ with st.sidebar:
         for idx, item in enumerate(history_data):
             # Tạo label gồm tên topic và ngày
             label = f"{item['topic']}\n({item['timestamp']})"
-            if st.button(label, key=f"hist_{idx}", use_container_width=True):
+            if st.button(label, key=f"hist_{idx}", width="stretch"):
                 st.session_state.selected_history_item = item
                 st.rerun() # Reload lại trang để hiển thị kết quả
     # --- END HISTORY SECTION ---
 
 # Main Input Area
 st.markdown("### 🔍 Nhập chủ đề nghiên cứu")
-topic = st.text_input("", placeholder="Ví dụ: Ứng dụng AI trong chẩn đoán ung thư phổi...", label_visibility="collapsed")
+topic = st.text_input("Chủ đề nghiên cứu", placeholder="Ví dụ: Ứng dụng AI trong chẩn đoán ung thư phổi...", label_visibility="collapsed")
 
 # File Uploader
 uploaded_file = st.file_uploader("📂 Upload tài liệu (PDF, DOCX) để phân tích kèm (Tùy chọn)", type=['pdf', 'docx'])
 
 col_btn, col_space = st.columns([1, 4])
 with col_btn:
-    start_btn = st.button("🚀 Bắt đầu phân tích", type="primary", use_container_width=True)
+    start_btn = st.button("🚀 Bắt đầu phân tích", type="primary", width="stretch")
 
 # Logic hiển thị kết quả
 results = None
