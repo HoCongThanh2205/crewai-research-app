@@ -27,6 +27,23 @@ def run_crew_process(topic: str):
     def remove_non_bmp_characters(text):
         return ''.join(c for c in text if ord(c) <= 0xFFFF)
 
+    def clean_output(text):
+        """Loại bỏ các dòng log của tool (Using tool, Parameters) khỏi output"""
+        lines = text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            # Loại bỏ dòng chứa log tool
+            if "Using tool:" in line or "Parameters:" in line or "Using tool" in line:
+                continue
+            cleaned_lines.append(line)
+        return '\n'.join(cleaned_lines).strip()
+
+    # 🔥 LẤY OUTPUT GỐC – KHÔNG BỊ TÓM TẮT
+    research_output = research_task.output.raw
+    analysis_output = analysis_task.output.raw
+    trend_output = clean_output(trend_task.output.raw) # Clean logs
+    content_output = content_task.output.raw
+
     # Filter emojis/non-BMP chars for this specific API to avoid ChromeDriver error
     sanitized_content = remove_non_bmp_characters(content_output)
 
@@ -84,8 +101,15 @@ def run_crew_process(topic: str):
 
     # Lấy URL timeline (nếu có)
     timeline_url = ""
-    if timeline_result and "result" in timeline_result:
-        timeline_url = timeline_result["result"]
+    if timeline_result:
+        print(f"🔍 DEBUG TIMELINE RESULT: {timeline_result}") # Debug
+        if "result" in timeline_result:
+            timeline_url = timeline_result["result"]
+            print(f"✅ FOUND TIMELINE URL: {timeline_url}")
+        else:
+            print("⚠️ Timeline result does not contain 'result' key")
+    else:
+        print("⚠️ No timeline result returned")
 
     # 🔥 LƯU TẠI PYTHON (KHÔNG QUA AGENT)
     try:
