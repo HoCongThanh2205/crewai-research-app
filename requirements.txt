@@ -3,3 +3,5 @@ crewai-tools
 requests
 streamlit
 python-dotenv
+PyPDF2
+python-docx

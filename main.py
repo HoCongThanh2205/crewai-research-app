@@ -1,17 +1,73 @@
+import requests
+import time
+import PyPDF2
+import docx
+import io
 from crew import build_crew
 from tasks import research_task, analysis_task, trend_task, content_task
 from tools.google_sheets_writer import write_to_google_sheets
-import requests
-import time
 
+def read_pdf(file_stream):
+    try:
+        pdf_reader = PyPDF2.PdfReader(file_stream)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text
+    except Exception as e:
+        return f"Error reading PDF: {str(e)}"
 
-def run_crew_process(topic: str):
+def read_docx(file_stream):
+    try:
+        doc = docx.Document(file_stream)
+        text = ""
+        for para in doc.paragraphs:
+            text += para.text + "\n"
+        return text
+    except Exception as e:
+        return f"Error reading DOCX: {str(e)}"
+
+def run_crew_process(topic: str, file_content: str = None, file_name: str = None):
     """
     Chạy toàn bộ quy trình CrewAI và các tool tích hợp.
     Trả về dictionary chứa kết quả.
     """
     print(f"🚀 Bắt đầu xử lý chủ đề: {topic}")
     
+    # Nếu có file, cập nhật description của research_task
+    if file_content:
+        print(f"📂 Đã nhận file: {file_name}")
+        research_task.description = f"""
+        CONTEXT FROM UPLOADED FILE ({file_name}):
+        {file_content[:20000]} # Limit 20k chars to avoid token limit
+        
+        TASK:
+        1. Analyze the uploaded document content above carefully.
+        2. Research the topic: "{topic}" using the Search Tool.
+        3. Combine insights from the file AND external search results.
+        
+        Requirements:
+        - Find the latest and most relevant information.
+        - **CRITICAL**: Every piece of information MUST have a citation with a valid URL.
+        - Format citations as: [Source Name](URL)
+        - If you cannot find a URL, explicitly state that.
+        - Neutral, factual tone.
+        - Write in VIETNAMESE.
+        """
+    else:
+        # Reset description nếu không có file (để tránh lưu state cũ)
+        research_task.description = f"""
+        Research the topic: "{topic}" using the Search Tool.
+
+        Requirements:
+        - Find the latest and most relevant information.
+        - **CRITICAL**: Every piece of information MUST have a citation with a valid URL.
+        - Format citations as: [Source Name](URL)
+        - If you cannot find a URL, explicitly state that.
+        - Neutral, factual tone.
+        - Write in VIETNAMESE.
+        """
+
     crew = build_crew(topic)
     crew.kickoff()
 

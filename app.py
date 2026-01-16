@@ -4,7 +4,7 @@ import base64
 import json
 import os
 from datetime import datetime
-from main import run_crew_process
+from main import run_crew_process, read_pdf, read_docx
 
 # Cấu hình trang
 st.set_page_config(
@@ -211,6 +211,9 @@ with st.sidebar:
 st.markdown("### 🔍 Nhập chủ đề nghiên cứu")
 topic = st.text_input("", placeholder="Ví dụ: Ứng dụng AI trong chẩn đoán ung thư phổi...", label_visibility="collapsed")
 
+# File Uploader
+uploaded_file = st.file_uploader("📂 Upload tài liệu (PDF, DOCX) để phân tích kèm (Tùy chọn)", type=['pdf', 'docx'])
+
 col_btn, col_space = st.columns([1, 4])
 with col_btn:
     start_btn = st.button("🚀 Bắt đầu phân tích", type="primary", use_container_width=True)
@@ -219,53 +222,69 @@ with col_btn:
 results = None
 
 # Case 1: Người dùng bấm chạy mới
-if start_btn and topic:
-    st.session_state.selected_history_item = None # Clear history selection
-    
-    # Progress Area
-    status_container = st.container()
-    with status_container:
-        st.markdown("### ⏳ Đang xử lý...")
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+if start_btn:
+    if not topic and not uploaded_file:
+        st.warning("⚠️ Vui lòng nhập chủ đề hoặc upload file để bắt đầu!")
+    else:
+        st.session_state.selected_history_item = None # Clear history selection
         
-        steps = [
-            "Đang tìm kiếm tài liệu y khoa uy tín...",
-            "Đang phân tích dữ liệu lâm sàng...",
-            "Đang tổng hợp xu hướng điều trị mới...",
-            "Đang soạn thảo báo cáo chuyên môn...",
-            "Đang tạo Timeline sự kiện..."
-        ]
-        
-        # Giả lập hiệu ứng loading ban đầu
-        for i, step in enumerate(steps):
-            status_text.text(f"🔄 {step}")
-            progress_bar.progress((i + 1) * 5)
-            time.sleep(0.3)
+        # Xử lý file nếu có
+        file_content = None
+        file_name = None
+        if uploaded_file:
+            file_name = uploaded_file.name
+            if file_name.endswith('.pdf'):
+                file_content = read_pdf(uploaded_file)
+            elif file_name.endswith('.docx'):
+                file_content = read_docx(uploaded_file)
+            
+            if not topic:
+                topic = f"Phân tích tài liệu: {file_name}"
 
-    try:
-        # Chạy CrewAI
-        with st.spinner('🤖 Đội ngũ AI đang làm việc hết công suất...'):
-            results = run_crew_process(topic)
-        
-        # Lưu vào lịch sử
-        save_to_history(topic, results)
-        
-        progress_bar.progress(100)
-        status_text.success("✅ Phân tích hoàn tất!")
-        time.sleep(1)
-        status_container.empty() # Ẩn thanh loading sau khi xong
+        # Progress Area
+        status_container = st.container()
+        with status_container:
+            st.markdown("### ⏳ Đang xử lý...")
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            steps = [
+                "Đang đọc và phân tích tài liệu..." if uploaded_file else "Đang tìm kiếm tài liệu y khoa uy tín...",
+                "Đang phân tích dữ liệu lâm sàng...",
+                "Đang tổng hợp xu hướng điều trị mới...",
+                "Đang soạn thảo báo cáo chuyên môn...",
+                "Đang tạo Timeline sự kiện..."
+            ]
+            
+            # Giả lập hiệu ứng loading ban đầu
+            for i, step in enumerate(steps):
+                status_text.text(f"🔄 {step}")
+                progress_bar.progress((i + 1) * 5)
+                time.sleep(0.3)
 
-    except Exception as e:
-        st.error(f"❌ Đã xảy ra lỗi hệ thống: {e}")
+        try:
+            # Chạy CrewAI
+            with st.spinner('🤖 Đội ngũ AI đang làm việc hết công suất...'):
+                results = run_crew_process(topic, file_content, file_name)
+            
+            # Lưu vào lịch sử
+            save_to_history(topic, results)
+            
+            progress_bar.progress(100)
+            status_text.success("✅ Phân tích hoàn tất!")
+            time.sleep(1)
+            status_container.empty() # Ẩn thanh loading sau khi xong
+
+        except Exception as e:
+            st.error(f"❌ Đã xảy ra lỗi hệ thống: {e}")
 
 # Case 2: Người dùng chọn từ lịch sử
 elif st.session_state.selected_history_item:
     results = st.session_state.selected_history_item['result']
     st.info(f"📂 Đang xem lại kết quả: **{st.session_state.selected_history_item['topic']}** (Ngày tạo: {st.session_state.selected_history_item['timestamp']})")
 
-elif start_btn and not topic:
-    st.warning("⚠️ Vui lòng nhập chủ đề để bắt đầu!")
+elif start_btn and not topic and not uploaded_file:
+    st.warning("⚠️ Vui lòng nhập chủ đề hoặc upload file để bắt đầu!")
 
 
 # Hiển thị kết quả (chung cho cả 2 case)
